@@ -2,7 +2,7 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import styles from './page.module.scss';
-import { FaRegCopy, FaEthereum } from 'react-icons/fa6';
+import { FaRegCopy, FaEthereum } from 'react-icons/fa';
 import { AiFillCheckCircle } from 'react-icons/ai';
 import { Web3 } from 'web3';
 import { getBalance, sendTransaction } from '../../service';
