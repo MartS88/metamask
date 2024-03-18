@@ -54,12 +54,15 @@ const WalletPage = () => {
 
     if (network === 'Mainnet') {
       switchToBNB('BNB');
+      const currentCoin = coinsData['BNB']['provider'];
+      const balance = await getBalance(currentCoin, address);
+      setAccountBalance(balance);
+
     } else if (network === 'Testnet') {
       switchToBSCTestnet('BNB');
       try {
         const currentCoin = coinsData['bnbTestnet']['provider'];
         const balance = await getBalance(currentCoin, address);
-
         setAccountBalance(balance);
       } catch (error) {
         console.error();
@@ -289,6 +292,7 @@ const WalletPage = () => {
       const transactionHash = await sendTransaction(address, recipientAddress, amount);
       setTransactionHash(transactionHash);
       setTransactionIsCompleted(true);
+
     } catch (error: any) {
       console.error('error', error);
       setErrorMessage(error.message);
