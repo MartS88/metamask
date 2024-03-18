@@ -1,11 +1,12 @@
 import styles from './page.module.css'
 import WalletPage from "@/app/components/wallet/page";
+import Testnet from "@/app/components/testnet/page";
 
 export default function Home() {
   return (
     <main className={styles.main}>
      <div className={styles.main_block}>
-            <WalletPage/>
+        <WalletPage/>
        </div>
     </main>
   )

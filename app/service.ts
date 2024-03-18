@@ -15,29 +15,38 @@ export const getBalance = async (provider: string, address: string) => {
 };
 
 
-export const sendTransaction = async (provider: string, recipientAddress: string, amount: string) => {
+
+export const sendTransaction = async (address: string, recipientAddress: string, amount: string) => {
   try {
-    const web3 = new Web3(provider);
-    const accounts = await web3.eth.requestAccounts();
-    const senderAddress = accounts[0];
+    const web3 = new Web3(window.ethereum);
+    const gasLimit = 21000;
+    const gasPrice = await web3.eth.getGasPrice();
+
+    const balance = await web3.eth.getBalance(address);
+    const amountInWei = web3.utils.toWei(amount, 'ether');
 
 
-    const balance = await web3.eth.getBalance(senderAddress);
-    const ethBalance = web3.utils.fromWei(balance, 'ether');
-    if (Number(ethBalance) < Number(amount)) {
-      throw new Error('Insufficient funds');
-    }
 
     const tx = {
-      from: senderAddress,
+      from: address,
       to: recipientAddress,
       value: web3.utils.toWei(amount, 'ether'),
+      gas: gasLimit,
+      gasPrice: gasPrice
     };
+
     const receipt = await web3.eth.sendTransaction(tx);
+    console.log('receipt', receipt)
     console.log('Transaction receipt:', receipt);
-    return receipt;
+    return receipt.transactionHash.toString();
   } catch (error) {
     console.error('Transaction failed:', error);
     throw error;
   }
 };
+
+
+
+
+
+

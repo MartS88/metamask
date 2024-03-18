@@ -2,13 +2,10 @@
 import React, { useEffect, useState } from 'react';
 import Image from 'next/image';
 import styles from './page.module.scss';
-import { FaRegCopy,FaEthereum } from 'react-icons/fa6';
+import { FaRegCopy, FaEthereum } from 'react-icons/fa6';
 import { AiFillCheckCircle } from 'react-icons/ai';
 import { Web3 } from 'web3';
-import { getBalance,sendTransaction } from '../../service';
-import axios from 'axios';
-import BigNumber from 'bignumber.js';
-
+import { getBalance, sendTransaction } from '../../service';
 
 
 
@@ -23,25 +20,155 @@ const WalletPage = () => {
   const [activeNetwork, setActiveNetwork] = useState('Mainnet');
   const [address, setAddress] = useState<string>('');
   const [activeCoin, setActiveCoin] = useState<string>('BNB');
-  const [amount, setAmount] = useState<string>('');
-  const [recipientAddress, setRecipientAddress] = useState<string>('0x567c5fa2Eb5ecCBCfA1d028ED5a2CBf47cdBd85c')
+  const [amount, setAmount] = useState<string>('0.0001');
+  const [transactionHash, setTransactionHash] = useState<string>('');
+  const [transactionCompleted, setTransactionIsCompleted] = useState<boolean>(false);
+  const [transactionHashCopied, setTransactionHashCopied] = useState<boolean>(false);
+  const [recipientAddress, setRecipientAddress] = useState<string>('0x567c5fa2Eb5ecCBCfA1d028ED5a2CBf47cdBd85c');
   const [accountBalance, setAccountBalance] = useState<string | null>(null);
   const [hoveredSvg, setHoveredSvg] = useState<boolean>(false);
   const [addressCopied, setAddressCopied] = useState<boolean>(false);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
   const [coinsData, setCoinsData] = useState<{
     [key: string]: { symbol: string; address: string; provider: string };
   }>({
     BNB: {
       symbol: 'BNB',
       address: address,
-      provider: `https://bsc-dataseed1.binance.org`
+      provider: `https://bsc-dataseed1.binance.org`,
     },
     ETH: {
       symbol: 'ETH',
       address: address,
-      provider: 'https://mainnet.infura.io/v3/9086527a5b44445aba865fdc391406a8'
+      provider: 'https://mainnet.infura.io/v3/9086527a5b44445aba865fdc391406a8',
+    },
+    bnbTestnet: {
+      symbol: 'tBNB',
+      address: address,
+      provider: 'https://data-seed-prebsc-1-s1.binance.org:8545/',
     },
   });
+
+  const switchNetwork = async (network: string) => {
+    setActiveNetwork(network);
+
+    if (network === 'Mainnet') {
+      switchToBNB('BNB');
+    } else if (network === 'Testnet') {
+      switchToBSCTestnet('BNB');
+      try {
+        const currentCoin = coinsData['bnbTestnet']['provider'];
+        const balance = await getBalance(currentCoin, address);
+
+        setAccountBalance(balance);
+      } catch (error) {
+        console.error();
+      }
+    }
+  };
+
+
+  const switchToBNB = (network: string) => {
+    setAccountBalance(null);
+    setActiveCoin(network);
+
+    if (window.ethereum) {
+      const existingNetwork = window.ethereum.networkVersion;
+      if (existingNetwork === '56') {
+
+        window.ethereum.request({
+          method: 'wallet_updateEthereumChain',
+          params: [{
+            chainId: '0x38',
+            nativeCurrency: {
+              name: 'BNB',
+              symbol: 'BNB',
+              decimals: 18,
+            },
+          }],
+        });
+      } else {
+
+        window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x38',
+            chainName: 'Binance Smart Chain',
+            nativeCurrency: {
+              name: 'BNB',
+              symbol: 'BNB',
+              decimals: 18,
+            },
+            rpcUrls: ['https://bsc-dataseed1.binance.org'],
+            blockExplorerUrls: ['https://bscscan.com/'],
+          }],
+        });
+      }
+    }
+  };
+
+  const switchToETH = (network: string) => {
+    setAccountBalance(null);
+    setActiveCoin(network);
+    if (window.ethereum) {
+      const existingNetwork = window.ethereum.networkVersion;
+      if (existingNetwork === '1') {
+
+        window.ethereum.request({
+          method: 'wallet_updateEthereumChain',
+          params: [{
+            chainId: '0x1',
+            nativeCurrency: {
+              name: 'Ethereum',
+              symbol: 'ETH',
+              decimals: 18,
+            },
+          }],
+        });
+      } else {
+
+        window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x1',
+            chainName: 'Ethereum',
+            nativeCurrency: {
+              name: 'Ethereum',
+              symbol: 'ETH',
+              decimals: 18,
+            },
+            rpcUrls: ['https://mainnet.infura.io/v3/9086527a5b44445aba865fdc391406a8'],
+            blockExplorerUrls: ['https://etherscan.io/'],
+          }],
+        });
+      }
+    }
+  };
+
+  const switchToBSCTestnet = (coin: string) => {
+    setAccountBalance(null);
+    setActiveCoin(coin);
+    if (window.ethereum) {
+      const existingNetwork = window.ethereum.chainId;
+      if (existingNetwork !== '0x61') {
+        window.ethereum.request({
+          method: 'wallet_addEthereumChain',
+          params: [{
+            chainId: '0x61',
+            chainName: 'Binance Smart Chain Testnet',
+            nativeCurrency: {
+              name: 'BNB',
+              symbol: 'tBNB',
+              decimals: 18,
+            },
+            rpcUrls: ['https://data-seed-prebsc-1-s1.binance.org:8545/'],
+            blockExplorerUrls: ['https://testnet.bscscan.com/'],
+          }],
+        });
+      }
+    }
+  };
+
 
   const copyHandler = () => {
     navigator.clipboard.writeText(address);
@@ -52,6 +179,14 @@ const WalletPage = () => {
     }, 3000);
   };
 
+  const transactionHashCopyHandler = () => {
+    navigator.clipboard.writeText(transactionHash);
+    setTransactionHashCopied(true);
+    setTimeout(() => {
+      setAddressCopied(false);
+      setTransactionHashCopied(false);
+    }, 3000);
+  };
 
   useEffect(() => {
     const loadWeb3 = async () => {
@@ -61,7 +196,9 @@ const WalletPage = () => {
           const web3Instance = new Web3(window.ethereum);
           const accounts = await web3Instance.eth.getAccounts();
           setAddress(accounts[0]);
-          console.log('MetaMask is connected!', address);
+          const currentCoinData = coinsData[activeCoin];
+          const balance = await getBalance(currentCoinData.provider, accounts[0]);
+          setAccountBalance(balance);
         } catch (error) {
           console.error('Failed to connect to MetaMask:', error);
         }
@@ -95,7 +232,6 @@ const WalletPage = () => {
   useEffect(() => {
     const handleAccountsChanged = (accounts: string[]) => {
       if (accounts.length === 0) {
-        // Пользователь вышел из аккаунта MetaMask
         setAddress('');
       }
     };
@@ -121,77 +257,72 @@ const WalletPage = () => {
       ETH: {
         ...prevCoinsData.ETH,
         address: address,
-
       },
+      bnbTestnet: {
+        ...prevCoinsData.bnbTestnet,
+        address: address,
+      },
+
     }));
   }, [address]);
 
 
-  const fetchBalance = async () => {
-    const coinData = coinsData[activeCoin];
-    console.log('coinData', coinData.provider);
-    const balance = await getBalance(coinData.provider,'0x4A2a082B1bAA257c0ce3116D02e23074F713A086');
-    console.log('balance', balance);
-    return balance
+  useEffect(() => {
 
-  }
-
-  // useEffect(() => {
-  //   const fetchBalance = async () => {
-  //     try {
-  //       if (!address || !activeCoin) return;
-  //
-  //
-  //       const coinData = coinsData[activeCoin];
-  //       console.log('coinData',coinData);
-  //       console.log('coinData', coinData.provider)
-  //       const balance = await getBalance(coinData.provider,coinData.address)
-  //
-  //       // setAccountBalance(balance);
-  //     } catch (error) {
-  //       console.error('Error fetching balance:', error);
-  //     }
-  //   };
-  //
-  //   fetchBalance();
-  // }, [address, activeCoin, coinsData]);
+    const fetchBalance = async () => {
+      try {
+        if (!address || !activeCoin) return;
+        const coinData = coinsData[activeCoin];
+        const balance = await getBalance(coinData.provider, coinData.address);
+        setAccountBalance(balance);
+      } catch (error) {
+        setAccountBalance('Error fetching balance');
+        console.error('Error fetching balance:', error);
+      }
+    };
+    fetchBalance();
+  }, [activeCoin, address]);
 
 
+  const sendHandler = async () => {
+    try {
+      const transactionHash = await sendTransaction(address, recipientAddress, amount);
+      setTransactionHash(transactionHash);
+      setTransactionIsCompleted(true);
+    } catch (error: any) {
+      console.error('error', error);
+      setErrorMessage(error.message);
+      setTimeout(() => {
+        setErrorMessage('');
+      }, 5000);
+    }
+  };
 
+const closeHandler = () => {
+ setTransactionIsCompleted(!transactionCompleted)
 
-
-
-
-
-  const log = async () => {
-    console.log('address', address)
-    console.log('receip', recipientAddress)
-    console.log('amount', amount);
-    console.log('coinData.provider', coinsData[activeCoin]['provider']);
-    await sendTransaction(coinsData[activeCoin]['provider'], recipientAddress, amount)
-  }
-
+}
   return (
     <div className={styles.wallet_page}>
       {address.length <= 0 ? (
         <div className={styles.metamask_button_block}>
           <button className={styles.connect} onClick={handleConnectClick}>Connect</button>
-          <FaEthereum size={25}/>
+          <FaEthereum size={25} />
         </div>
 
       ) : (
         <>
-          <h1 onClick={fetchBalance}>Account 1</h1>
+          <h1>Account 1</h1>
           <div className={styles.networks}>
           <span
             className={`${styles.network} ${activeNetwork === 'Mainnet' ? styles.active : ''}`}
-            onClick={() => setActiveNetwork('Mainnet')}
+            onClick={() => switchNetwork('Mainnet')}
           >
             Mainnet
           </span>
             <span
               className={`${styles.network} ${activeNetwork === 'Testnet' ? styles.active : ''}`}
-              onClick={() => setActiveNetwork('Testnet')}
+              onClick={() => switchNetwork('Testnet')}
             >
             Testnet
           </span>
@@ -218,7 +349,7 @@ const WalletPage = () => {
           <div className={styles.wallets}>
             <div
               className={`${styles.wallet_block} ${activeCoin === 'BNB' ? styles.active : ''}`}
-              onClick={() => setActiveCoin('BNB')}
+              onClick={activeNetwork === 'Mainnet' ? () => switchToBNB('BNB') : () => switchToBSCTestnet('BNB')}
             >
               <span>BNB</span>
               <Image
@@ -231,9 +362,9 @@ const WalletPage = () => {
               />
             </div>
 
-            <div
+            {activeNetwork !== 'Testnet' && <div
               className={`${styles.wallet_block} ${activeCoin === 'ETH' ? styles.active : ''}`}
-              onClick={() => setActiveCoin('ETH')}
+              onClick={() => switchToETH('ETH')}
             >
               <span>ETH</span>
               <Image
@@ -244,10 +375,10 @@ const WalletPage = () => {
                 height={18}
                 priority
               />
-            </div>
+            </div>}
           </div>
           <div className={styles.balance}>
-            {accountBalance && <span>$ {accountBalance} {activeCoin === 'BNB' ? 'BNB' : 'ETH'}</span>}
+            {accountBalance && <span>{accountBalance} {activeCoin === 'BNB' ? 'BNB' : 'ETH'}</span>}
           </div>
           <div className={styles.send_block}>
             <div className={styles.send_block}>
@@ -274,51 +405,37 @@ const WalletPage = () => {
                     setAmount(onlyNumbersAndDot);
                   }}
                 />
-                <button onClick={log}>SEND</button>
+                <button onClick={sendHandler}>SEND</button>
               </div>
             </div>
           </div>
+
+          {transactionCompleted && (
+            <div className={styles.transaction_completed}>
+                            <span className={styles.close_button}
+                                  onClick={closeHandler}>X</span>
+              <span>Transaction Confirmed</span>
+              <a
+                href={activeNetwork === 'Mainnet' ?
+                  (activeCoin === 'BNB' ? `https://bscscan.com/tx/${transactionHash}` : `https://etherscan.io/tx/${transactionHash}`) :
+                  `https://testnet.bscscan.com/tx/${transactionHash}`}
+                target='_blank' rel='noopener noreferrer'>
+                <span className={styles.view_transaction}>View on block explorer</span>
+              </a>
+
+
+              <span>transaction hash:</span>
+              <div className={styles.transaction_hash}>
+                {transactionHash} {transactionHashCopied ? <AiFillCheckCircle color='green' /> :
+                <FaRegCopy className={styles.transaction_copy} onClick={transactionHashCopyHandler} />}
+              </div>
+            </div>
+          )}
         </>
       )}
+      <div className={styles.error}>{errorMessage}</div>
     </div>
   );
-}
-  export default WalletPage;
+};
+export default WalletPage;
 
-
-
-
-
-
-
-
-
-// 0x4A2a082B1bAA257c0ce3116D02e23074F713A086
-
-
-
-//testnet https://api-testnet.bscscan.com/api?module=account&action=balance&address=0x4A2a082B1bAA257c0ce3116D02e23074F713A086&apikey=YourApiKeyTokenFI5M3NG1TWWKNHWSBBPFDTQTJZCG95I7YM
-
-// const getCoinData = async () => {
-//   try {
-//     const response = await axios.get('https://api-testnet.bscscan.com/api?module=account&action=balance&address=0x4A2a082B1bAA257c0ce3116D02e23074F713A086&apikey=YourApiKeyTokenFI5M3NG1TWWKNHWSBBPFDTQTJZCG95I7YM');
-//     const balanceWei = response.data.result;
-//     const balance = new BigNumber(balanceWei).dividedBy(new BigNumber(10).pow(18)).toFixed(2).toString();
-//     console.log('balance', balance);
-//     return balance;
-//   } catch (error) {
-//     console.error('Error fetching balance:', error);
-//     throw error;
-//   }
-// };
-//
-// getCoinData();
-
-
-
-
-
-//HFSAS518SE7AGBAYXQ85UQ7I241DISNXCW
-
-//https://api.bscscan.com/api?module=account&action=balance&address=0x70F657164e5b75689b64B7fd1fA275F334f28e18&apikey=HFSAS518SE7AGBAYXQ85UQ7I241DISNXCW
-// https://api-testnet.bscscan.com/api?module=account&action=balance&address=0x4A2a082B1bAA257c0ce3116D02e23074F713A086&apikey=YourApiKeyTokenFI5M3NG1TWWKNHWSBBPFDTQTJZCG95I7YM
